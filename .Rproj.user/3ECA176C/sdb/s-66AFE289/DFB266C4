@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "plot_igraph_for_gene <- function(expr_object, mst_graph, kmeans_obj, graph_layout_matrix = NULL, ensembl_id = character(), color_scale_divisor = NULL, color_vec = colorRampPalette(c('red', 'white', 'blue'))(100), color_function = mean, size_function = length)  {\n  print(ensembl_id)\n  list_of_expr_values_by_cluster_index <- lapply(1:length(unique(kmeans_obj$cluster)),  function(.cluster_num) {\n    cluster_level_expr_values <- expr_object[which(rownames(expr_object) %in% names(kmeans_obj$cluster[which(kmeans_obj$cluster == .cluster_num)])), ensembl_id]\n    return(cluster_level_expr_values)\n  })\n\n  color_variable <- sapply(list_of_expr_values_by_cluster_index, color_function)\n  print(color_variable)\n  color_values <-rep('grey', length(color_variable))\n  if(is.null(color_scale_divisor))  {\n    color_scale_divisor <- max(color_variable)\n  }\n  scaled_vals <- ceiling(color_variable/color_scale_divisor *  100)\n  print(scaled_vals)\n  color_values[which(color_variable != 0 & !is.na(color_variable))] <- color_vec[scaled_vals[which(scaled_vals != 0 & !is.na(scaled_vals))]]\n\n  print(color_values)\n\n  size_variable <- sapply(list_of_expr_values_by_cluster_index, size_function)\n\n  if(is.null(graph_layout_matrix))  {\n    graph_layout_matrix <<- layout.auto(mst_graph)\n  }\n  plot(mst_graph, vertex.size = size_variable/10, vertex.color = color_values, layout = graph_layout_matrix, vertex.label=NA)\n  debug_df<- data.frame(vid = as.character(V(mst_graph)), measure_var = color_variable, color = color_values, size = size_variable, stringsAsFactors = FALSE)\n  debug_df$cluster_members <- sapply(1:length(unique(kmeans_obj$cluster)), function(.x)  {paste(names(kmeans_obj$cluster[kmeans_obj$cluster == .x]), collapse=\",\")})\n  return(debug_df)\n}\n\nsplit_samples_and_generate_plot <- function(ensembl_id = character(), sample_list = list(), kmeans_obj_list = list(), mst_object_list = list(), layout_list = list(), sample_names = character(), color_function = mean)  {\n\n  gene_symbol <- paste(select(org.Hs.eg.db, keys = ensembl_id, keytype = 'ENSEMBL', columns = 'SYMBOL')$SYMBOL, collapse = \",\")\n  max_measure_value <- NULL\n  min_non_zero_measure_var <- 1e20\n\n  par(mfrow = c(1, length(sample_list)), oma = c(0,0,2,0))\n  for(i in 1:length(sample_list))  {\n    debug_fl_igraph_df <- plot_igraph_for_gene(sample_list[[i]], kmeans_obj = kmeans_obj_list[[i]], mst_graph = mst_object_list[[i]], graph_layout_matrix = layout_list[[i]], ensembl_id = ensembl_id)\n    title(sample_names[[i]])\n    max_measure_value <- max(max_measure_value, max(debug_fl_igraph_df$measure_var))\n    min_non_zero_measure_var <- min(min_non_zero_measure_var, min(debug_fl_igraph_df$measure_var[(debug_fl_igraph_df$measure_var != 0) & !is.na(debug_fl_igraph_df$measure_var)]))\n  }\n  for(i in 1:length(sample_list))  {\n    debug_fl_igraph_df <- plot_igraph_for_gene(sample_list[[i]], kmeans_obj = kmeans_obj_list[[i]], mst_graph = mst_object_list[[i]], graph_layout_matrix = layout_list[[i]], ensembl_id = ensembl_id, color_scale_divisor = max_measure_value)\n    title(sample_names[[i]])\n  }\n  mtext(paste0(\"Mean log expression of \", gene_symbol, \" across clusters\") , outer = TRUE, cex = 1.5)\n}\n\n",
+    "created" : 1472142242122.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "0|262|28|0|\n30|219|48|0|\n",
+    "hash" : "2166287748",
+    "id" : "DFB266C4",
+    "lastKnownWriteTime" : 1474563039,
+    "last_content_update" : 1474915493816,
+    "path" : "~/Dropbox/r_package_dev/rnaseqUtils/R/plot_functions.R",
+    "project_path" : "R/plot_functions.R",
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

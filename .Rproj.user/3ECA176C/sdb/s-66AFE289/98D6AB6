@@ -1,0 +1,20 @@
+{
+    "collab_server" : "",
+    "contents" : "Package: rnaseqUtils\nType: Package\nTitle: Utility Functions for RNASeq Data Analysis\nVersion: 0.1.0\nAuthor: Rob Carter\nMaintainer: Rob Carter <robert.carter@stjude.org>\nDescription: This package currently contains several functions for faciltating\n    RNASeq data analysis. These functions include facilities for normalizing data,\n    processing cellranger output and filtering genes and cells.\nLicense: What license is it under?\nLazyData: TRUE\nRoxygenNote: 5.0.1\nImports:\n  cellrangerRkit,\n  biomaRt\n\n",
+    "created" : 1472150415948.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "2629161174",
+    "id" : "98D6AB6",
+    "lastKnownWriteTime" : 1474485606,
+    "last_content_update" : 1474485606599,
+    "path" : "~/Dropbox/r_package_dev/rnaseqUtils/DESCRIPTION",
+    "project_path" : "DESCRIPTION",
+    "properties" : {
+    },
+    "relative_order" : 5,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "dcf"
+}
