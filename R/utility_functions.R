@@ -47,87 +47,7 @@ read_merge_and_return_sample_matrices <- function(filenames = character(), sampl
   return(raw_expr_mat)
 }
 
-#' Filter MT and Ribsomal protein genes
-#'
-#' Removes all mitochondrial and ribosomal protein genes in the count matrix and returns the reduces matrix.
-#'
-#' @return remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix returns a reduced matrix with all mitochondrial and ribosomal protein genes removed
 
-#' @export
-remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix <- function(cell_by_ensembl_mat = matrix(), species = 'hsapiens')  {
-  library(biomaRt)
-  if(!all(grepl("^ENS", colnames(cell_by_ensembl_mat))))  {
-    stop("Column names should be ensembl ids and should start with 'ENS'")
-  }
-  if(species == 'hsapiens')  {
-    ensembl <- biomaRt::useMart("ensembl", dataset="hsapiens_gene_ensembl")
-    useDataset("hsapiens_gene_ensembl", mart=ensembl)
-    ensembl_gene_metadata_df <- biomaRt::select(ensembl, keys = colnames(cell_by_ensembl_mat), keytype = 'ensembl_gene_id', columns=c('ensembl_gene_id','chromosome_name', "hgnc_symbol", "description")) %>% dplyr::rename(ENSEMBL = ensembl_gene_id)
-    ensembl_gene_metadata_MT_and_ribosomal_df <- dplyr::filter(ensembl_gene_metadata_df, grepl("^RP[SL][01-9]", ensembl_gene_metadata_df$hgnc_symbol) | (chromosome_name == 'MT'))
-  }
-  else {
-    warning("This is not a valid option")
-    stop()
-  }
-  ensembl_overlaps <- colnames(cell_by_ensembl_mat)[which(colnames(cell_by_ensembl_mat) %in% ensembl_gene_metadata_MT_and_ribosomal_df$ensembl_gene_id)]
-  message(paste(length(ensembl_overlaps), 'of the', ncol(cell_by_ensembl_mat), 'ensembl ids are being removed'))
-  return(cell_by_ensembl_mat[,!colnames(cell_by_ensembl_mat) %in% ensembl_overlaps])
-}
-
-#' @export
-get_random_genes_from_matrix <- function(count_matrix = matrix(), distance_matrix = NULL, normalize_matrix = TRUE, range_of_counts = 2:50, n_sample_draws = 1000, tail_area = 0.2)  {
-  #remove zero counts
-  sample_names <- rownames(count_matrix)
-  lt2_names <- colnames(count_matrix)[apply(count_matrix, 2, function(.col)  {sum(.col) <= 1})]
-  gt1_mat <- count_matrix[,!colnames(count_matrix) %in% lt2_names]
-  if(normalize_matrix)  {
-    gt1_mat <- t(apply(gt1_mat, 1, function(.x) {log2(.x/sum(.x) * 1e6 + 1)}))
-  }
-  if(is.null(distance_matrix))  {
-    cor_mat <- cor(t(gt1_mat))
-    dist_mat <- 1 - cor_mat
-  }
-  else {
-    dist_mat <- distance_matrix
-  }
-
-  cell_non_zero_gene_counts <- apply(gt1_mat, 2, function(.x)  {sum(.x >0)})
-  valid_cell_non_zero_gene_counts <- cell_non_zero_gene_counts[(cell_non_zero_gene_counts %in% range_of_counts)]
-
-  tested_genes_pval_and_dif_mat_list <- lapply(unique(valid_cell_non_zero_gene_counts), function(.count)  {
-
-    mean_pw_cor <- sapply(1:n_sample_draws, function(.ind)  {
-      sub_sample_names <- sample(sample_names, .count, replace = FALSE)
-      sampled_names_mat <- dist_mat[sub_sample_names,sub_sample_names]
-      get_mean_dist_from_matrix(sampled_names_mat)
-    })
-    mean_mean_pw_cor <- mean(mean_pw_cor)
-    #print(mean_pw_cor)
-    sd_mean_pw_cor <- sd(mean_pw_cor)
-
-    genes_pval_and_dif_mat <- sapply(names(valid_cell_non_zero_gene_counts[valid_cell_non_zero_gene_counts == .count]), function(.gene_name)  {
-      selected_sample_names <- rownames(gt1_mat)[which(gt1_mat[,.gene_name] > 0)]
-      selected_mean_val<- get_mean_dist_from_matrix(dist_mat[selected_sample_names,selected_sample_names])
-      return(c(mean(mean_pw_cor < selected_mean_val), log10(selected_mean_val/min(mean_pw_cor))))
-    })
-    #print(head(genes_pval_and_dif_mat))
-    return(genes_pval_and_dif_mat)
-  })
-  return(t(do.call(cbind, tested_genes_pval_and_dif_mat_list)))
-  #return(unique(c(unlist(names(genes_to_remove_list)), lt2_names)))
-}
-
-#` Calculate mean value from matrix
-#'
-#' The function calculates and returns the mean of the upper-triangular portion of a matrix
-#'
-#' @return get_mean_dist_from_matrix returns the upper-triangular mean of temp_mat, exluding the zeros from the diagonal or the lower-triangular portion of the matrix
-#'
-get_mean_dist_from_matrix <- function(temp_mat)  {
-  temp_mat[!upper.tri(temp_mat)] <- 0
-  #print(temp_mat)
-  mean(temp_mat[temp_mat != 0])
-}
 
 #converts a named charcter vector into a 2-column data.frame with the column names specified by col_names
 #' @export
@@ -184,4 +104,44 @@ get_cidr_distance_matrix_from_raw_counts <- function(cell_by_ensembl_mat = matri
   dist_mat <- cidr_obj@dissim
   dimnames(dist_mat) <- list(rownames(cell_by_ensembl_mat), rownames(cell_by_ensembl_mat))
   return(dist_mat)
+}
+
+
+#' Determine genes enriched in regions of a minimum spanning tree
+#'
+#' Calculate an enrichment score for each gene that indicates whether it is expressed in a particular non-random region of the mininimum-spanning tree
+#'
+#' This function computes an enrichment score for each gene in the mst using the followeing approach.
+#' For each gene-mst pair, the sum of summary statistic differences between all pairs of nodes is determined, and is then divided by the range.
+#' This value will be equal to or higher than one, with lower values indicating higher enrichment in the mst.
+#' The basis for this is that the more randomly a gene is expressed, the higher the sum of the differences between neihboring nodes will be.
+#' This will result in higher values. Values of one will occur when the full range of values occurs along a single edge in the graph,
+#' bisecting the graph into high and low expressed regions for this particular gene.
+#' Alternatively, a value of one can occur if a gene is gradually increased (or decreased) in one direction across its range, but never changing sign.
+#'
+#' The above value is then divided by the variance of the measurements in the graph.
+#' This increases the enrichment score for genes that are enriched in large subgraphs relative to terminal nodes.
+#'
+#' @return get_df_of_cluster_enrichments_for_each_gene returnn a modified version  of cluster_level_df, which contains the enrichment scores for each gene from each mst,
+#' or NA if the gene was not present in a particular mst
+#'
+#' @export
+get_df_of_cluster_enrichments_for_each_gene <- function(cluster_level_df = data.frame(), mst_igraph_list = list()) {
+  sample_level_cluster_enrichments_list <- lapply(names(mst_igraph_list), function(.prefix)  {
+    mst_and_node_values_list <- mst_igraph_list[[.prefix]]
+    current_mst_graph <- mst_and_node_values_list[[1]]
+    enrichment_values <- apply(mst_and_node_values_list[[2]], 2, function(.col)  {
+      min_max_dif_value <- abs(max(.col) - min(.col))
+      edge_nodes_mat <- get.edges(current_mst_graph, E(current_mst_graph))
+      #print(abs(.col[edge_nodes_mat[,1]] - .col[edge_nodes_mat[,2]]))
+      total_edge_lengths <- sum(abs(.col[edge_nodes_mat[,1]] - .col[edge_nodes_mat[,2]]))
+      log2(total_edge_lengths/(min_max_dif_value * var(.col)))
+    })
+    return(enrichment_values)
+  })
+  for(i in 1:length(mst_igraph_list))  {
+    trans_df <- rnaseqUtils::get_df_from_named_char_vector(sample_level_cluster_enrichments_list[[i]], c('GENEID', paste0(names(mst_igraph_list)[i], "_clusenrich")))
+    cluster_level_df <- dplyr::left_join(cluster_level_df, trans_df)
+  }
+  return(cluster_level_df)
 }

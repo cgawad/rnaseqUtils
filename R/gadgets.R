@@ -26,6 +26,7 @@ launch_rnaseq_data_explorer_gadget <- function(dataset_level_df = data.frame(), 
   server <- shinyServer(function(input, output) {
     output$plot <- renderPlotly({
       if(length(input$dt_rows_selected) > 0 && input$select == 'gene')  {
+        print(paste("Looking for", cluster_level_df[input$dt_rows_selected, 'ENSEMBL']))
         new_coloring_variable <- ENSEMBL_to_color_var_list[[cluster_level_df[input$dt_rows_selected, 'ENSEMBL']]]
       }
       else if(input$select != 'gene') {
@@ -34,8 +35,16 @@ launch_rnaseq_data_explorer_gadget <- function(dataset_level_df = data.frame(), 
       else if(length(input$dt_rows_selected) == 0 && input$select == 'gene')  {
         new_coloring_variable <- NULL
       }
-
-      p<-plot_ly(x = dataset_level_df$D1, y = dataset_level_df$D2, z = dataset_level_df$D3, color = new_coloring_variable, text = paste(dataset_level_df$sample_name, cluster_level_df[input$dt_rows_selected, 'SYMBOL'], sep = ","), type = 'scatter3d', mode = 'markers')
+      dims_inds <- grep("^D[123]", names(dataset_level_df))
+      if(length(dims_inds) == 3)  {
+        p<-plot_ly(x = dataset_level_df$D1, y = dataset_level_df$D2, z = dataset_level_df$D3, color = new_coloring_variable, text = paste(dataset_level_df$sample_name, cluster_level_df[input$dt_rows_selected, 'SYMBOL'], sep = ","), type = 'scatter3d', mode = 'markers')
+      }
+      else if(length(dims_inds) == 2) {
+        p<-plot_ly(x = dataset_level_df$D1, y = dataset_level_df$D2, color = new_coloring_variable, text = paste(dataset_level_df$sample_name, cluster_level_df[input$dt_rows_selected, 'SYMBOL'], sep = ","), type = 'scatter', mode = 'markers')
+      }
+      else  {
+        stop(paste('dataset_level_df needs do have either D1,D2 or D1,D2,D3 as columns'))
+      }
       layout(p)
     })
     output$dt <- DT::renderDataTable(cluster_level_df, server =  TRUE, selection = 'single', filter = 'bottom', options = list(pageLength = 5, autoWidth = TRUE))
