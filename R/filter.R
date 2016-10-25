@@ -6,7 +6,7 @@
 #'
 
 #' @export
-remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix <- function(cell_by_ensembl_mat = matrix(), species = 'hsapiens', rm_cell_cycle_genes = TRUE)  {
+remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix <- function(cell_by_ensembl_mat = matrix(), species = 'hsapiens', rm_cell_cycle_genes = FALSE)  {
   library(biomaRt)
   if(!all(grepl("^ENS", colnames(cell_by_ensembl_mat))))  {
     stop("Column names should be ensembl ids and should start with 'ENS'")

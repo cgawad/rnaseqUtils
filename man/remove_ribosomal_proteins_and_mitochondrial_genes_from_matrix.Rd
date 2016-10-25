@@ -6,7 +6,7 @@
 \usage{
 
   remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix(cell_by_ensembl_mat = matrix(),
-  species = "hsapiens", rm_cell_cycle_genes = TRUE)
+  species = "hsapiens", rm_cell_cycle_genes = FALSE)
 }
 \value{
 remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix returns a reduced matrix with all mitochondrial and ribosomal protein genes removed
