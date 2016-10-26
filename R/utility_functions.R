@@ -8,7 +8,7 @@
 get_cellranger_matrices <- function(filenames = character(), sample_name_prefix = NULL, genome_build = 'hg19')  {
   matrix_list <- lapply(filenames, function(.filename)  {
     temp_gbm <- cellrangerRkit::load_cellranger_matrix(.filename, genome = genome_build)
-    temp_gbm_mat <- as.matrix(temp_gbm@mat)
+    temp_gbm_mat <- as.matrix(exprs(temp_gbm))
     #gbm_gt1cell_mat <- gbm_mat[apply(as.matrix(gbm_mat), 1, function(.x)  {sum(.x > 1)}) > 1,]
     # gbm_gt1cell_df <- as.data.frame(as.matrix(gbm_gt1cell_mat), optional = TRUE, stringsAsFactors = FALSE)
     # gbm_gt1cell_df <- mutate(gbm_gt1cell_df, ENSEMBL = row.names(gbm_gt1cell_df))

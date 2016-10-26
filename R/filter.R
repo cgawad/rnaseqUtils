@@ -30,7 +30,7 @@ remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix <- function(cell_b
   #At this point we know we have either hsapiens or mmusculus species, so we go ahead and determine whether to remove the cell cycle genes
   cell_cycle_genes <- character()
   if(rm_cell_cycle_genes)  {
-    cell_cycle_df <- read.table(dir(file.path(system.file(package = "rnaseqUtils"), 'extdata'), paste0(species, "_cell_cycle_genes.tsv"), full.names = TRUE), sep = '\t', header = TRUE)
+    cell_cycle_df <- read.table(dir(file.path(system.file(package = "rnaseqUtils"), 'extdata'), paste0(species, "_cell_cycle_genes.tsv"), full.names = TRUE), sep = '\t', header = TRUE, stringsAsFactors = FALSE)
     #current_gene_count <- ncol(ensembl_gene_metadata_MT_and_ribosomal_df)
     cell_cycle_genes <- cell_cycle_df$ENSEMBL
   }
