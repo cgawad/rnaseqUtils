@@ -49,14 +49,18 @@ remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix <- function(cell_b
 #' This c
 
 #' @export
-get_random_genes_from_matrix <- function(count_matrix = matrix(), recompute_dist_removal_threshold = 2000, min_cell_count_threshold = 4, distance_matrix = NULL, distance_function = dist, normalize_matrix = TRUE, heuristic_threshold = 200, heuristic_step_size = 20, n_sample_draws = 1000, tail_area = 0.2)  {
+get_random_genes_from_matrix <-function(count_matrix = matrix(), recompute_dist_removal_threshold = 500, min_cell_count_threshold = 4, distance_matrix = NULL, distance_function = dist, normalize_matrix = FALSE, heuristic_threshold = 200, heuristic_step_size = 1000, n_sample_draws = 1000, tail_area = 0.001)  {
   #remove zero counts
   sample_names <- rownames(count_matrix)
   gene_counts <- apply(count_matrix, 2, function(.col)  {sum(.col > 0)})
   message(paste("Removing", sum(gene_counts < min_cell_count_threshold), ' genes expressed in less than', min_cell_count_threshold, 'cells from initial matrix of', nrow(count_matrix), 'by', ncol(count_matrix), 'matrix, leaving',  sum(gene_counts >= min_cell_count_threshold), 'genes'))
   min_thresh_mat <- count_matrix[,gene_counts >= min_cell_count_threshold]
+  min_thresh_counts <- apply(min_thresh_mat, 2, function(.col)  {sum(.col > 0)})
+  min_thresh_mat_keep_logical <- rep(TRUE, ncol(min_thresh_mat))
+  names(min_thresh_mat_keep_logical) <- colnames(min_thresh_mat)
+
   if(normalize_matrix)  {
-    min_thresh_mat <- t(apply(min_thresh_mat, 1, function(.x) {log2(.x/sum(.x) * 1e6 + 1)}))
+    min_thresh_mat <- t(apply(min_thresh_mat, 1, function(.x) {log2(.x/sum(.x) * 1e5 + 1)}))
   }
   if(is.null(distance_matrix))  {
     dist_mat <- distance_function(min_thresh_mat)
@@ -64,52 +68,69 @@ get_random_genes_from_matrix <- function(count_matrix = matrix(), recompute_dist
   else {
     dist_mat <- distance_matrix
   }
-  #Create a list of vectors, with each vector containing cell counts corersponding to genes that will share the same sample of randomly selected cell distances
-  valid_counts_less_than_threshold <- sort(unique(gene_counts[(gene_counts < heuristic_threshold) & (gene_counts >= min_cell_count_threshold)]))
-  #print(valid_counts_less_than_threshold)
-  list_of_cell_counts_to_test <- lapply(c(valid_counts_less_than_threshold, seq(heuristic_threshold, max(gene_counts), by = heuristic_step_size)), function(.n)  {
-    if(.n < heuristic_threshold)  {
-      return(unique((gene_counts)[gene_counts == .n]))
-    }
-    else {
-      return(unique(gene_counts[(gene_counts  >= .n) & (gene_counts < (.n + heuristic_step_size))]))
-    }
-  })
-  n_removed_since_last_dist_update <- 0
-  pvals_and_dif_mats_list <- lapply(1:length(list_of_cell_counts_to_test), function(i)  {
-    counts <- list_of_cell_counts_to_test[[i]]
-    min_count <- min(counts)
-    sampled_mean_dists <- get_sampled_distances(dist_mat, n_samples = n_sample_draws, n_cells_per_sample = min_count)
-    #sampled_mean_mean_dist <- mean(sampled_mean_dists)
-    pval_and_dif_by_gene_count_mat <- sapply(names(gene_counts[gene_counts %in% counts]), function(.name)  {
-      expr_values_for_gene <- min_thresh_mat[,.name]
-      logical_of_expressed_genes <- expr_values_for_gene > 0
-      n_expr_genes <- sum(logical_of_expressed_genes)
-      if(n_expr_genes == min_count)  {
-        gene_mean_dist <- get_mean_dist_from_matrix(dist_mat[logical_of_expressed_genes, logical_of_expressed_genes])
+  for(i in 1:1000)  {
+    restart = FALSE
+    print(paste("Iteration", i))
+    #Create a list of vectors, with each vector containing cell counts corersponding to genes that will share the same sample of randomly selected cell distances
+    valid_counts_less_than_threshold <- sort(unique(min_thresh_counts[min_thresh_mat_keep_logical][(min_thresh_counts[min_thresh_mat_keep_logical] < heuristic_threshold) & (min_thresh_counts[min_thresh_mat_keep_logical] >= min_cell_count_threshold)]))
+    #print(valid_counts_less_than_threshold)
+    list_of_cell_counts_to_test <- lapply(c(valid_counts_less_than_threshold, seq(heuristic_threshold, max(min_thresh_counts[min_thresh_mat_keep_logical]), by = heuristic_step_size)), function(.n)  {
+      if(.n < heuristic_threshold)  {
+        return(unique((min_thresh_counts[min_thresh_mat_keep_logical])[min_thresh_counts[min_thresh_mat_keep_logical] == .n]))
       }
       else {
-        gene_mean_dist <- mean(sapply(1:5, function(.iter)  {
-          subsampled_inds <- sort(sample(which(logical_of_expressed_genes), min_count, replace = FALSE))
-          get_mean_dist_from_matrix(dist_mat[subsampled_inds, subsampled_inds])
-        }))
+        return(unique(min_thresh_counts[min_thresh_mat_keep_logical][(min_thresh_counts[min_thresh_mat_keep_logical]  >= .n) & (min_thresh_counts[min_thresh_mat_keep_logical] < (.n + heuristic_step_size))]))
       }
-      return(c(mean(sampled_mean_dists < gene_mean_dist), log10(gene_mean_dist/min(sampled_mean_dists))))
     })
-    logical_failing_genes <- pval_and_dif_by_gene_count_mat[1,] > tail_area
-    message(paste("Removing", sum(logical_failing_genes), "of", ncol(pval_and_dif_by_gene_count_mat), "genes that are expressed in", min_count, 'to', max(counts), 'cells'))
-    n_removed_since_last_dist_update <<- n_removed_since_last_dist_update + sum(logical_failing_genes)
+    n_removed_since_last_dist_update <- 0
+    pvals_and_dif_mats_list <- lapply(1:length(list_of_cell_counts_to_test), function(.x)  {return(NULL)})
+    for(i in 1:length(list_of_cell_counts_to_test))  {
+      counts <- list_of_cell_counts_to_test[[i]]
+      min_count <- min(counts)
+      sampled_mean_dists <- rnaseqUtils:::get_sampled_distances(dist_mat, n_samples = n_sample_draws, n_cells_per_sample = min_count)
+      #sampled_mean_mean_dist <- mean(sampled_mean_dists)
+      pval_and_dif_by_gene_count_mat <- sapply(names(min_thresh_counts[min_thresh_mat_keep_logical][min_thresh_counts[min_thresh_mat_keep_logical] %in% counts]), function(.name)  {
+        expr_values_for_gene <- min_thresh_mat[,.name]
+        logical_of_expressed_genes <- expr_values_for_gene > 0
+        n_expr_genes <- sum(logical_of_expressed_genes)
+        if(n_expr_genes == min_count)  {
+          gene_mean_dist <- rnaseqUtils:::get_mean_dist_from_matrix(dist_mat[logical_of_expressed_genes, logical_of_expressed_genes])
+        }
+        else {
+          gene_mean_dist <- mean(sapply(1:5, function(.iter)  {
+            subsampled_inds <- sort(sample(which(logical_of_expressed_genes), min_count, replace = FALSE))
+            rnaseqUtils:::get_mean_dist_from_matrix(dist_mat[subsampled_inds, subsampled_inds])
+          }))
+        }
+        return(c(mean(sampled_mean_dists < gene_mean_dist), log10(gene_mean_dist/min(sampled_mean_dists))))
+      })
+      logical_failing_genes <- pval_and_dif_by_gene_count_mat[1,] > tail_area
+      updated_min_thresh_mat_keep_logical <- min_thresh_mat_keep_logical
+      updated_min_thresh_mat_keep_logical[names(which(logical_failing_genes))] <- FALSE
+      min_thresh_mat_keep_logical <- updated_min_thresh_mat_keep_logical
 
-    if(n_removed_since_last_dist_update >= recompute_dist_removal_threshold)  {
-      n_removed_since_last_dist_update <<- 0
-      message(paste("Over", recompute_dist_removal_threshold, "genes_have been removed since last distance matrix update, triggering new distance matrix computation"))
-      min_thresh_mat <<- min_thresh_mat[, ! colnames(min_thresh_mat) %in% colnames(pval_and_dif_by_gene_count_mat[,logical_failing_genes])]
-      dist_mat <<- distance_function(min_thresh_mat)
+      message(paste("Removing", sum(logical_failing_genes), "of", ncol(pval_and_dif_by_gene_count_mat), "genes that are expressed in", min_count, 'to', max(counts), 'cells'))
+      updated_n_removed_since_last_dist_update <- n_removed_since_last_dist_update + sum(logical_failing_genes)
+      n_removed_since_last_dist_update <- updated_n_removed_since_last_dist_update
+      #print(paste("Nowa at", n_removed_since_last_dist_update,'removed of', recompute_dist_removal_threshold,'before recomputing'))
+      if(n_removed_since_last_dist_update >= recompute_dist_removal_threshold)  {
+        n_removed_since_last_dist_update <- 0
+        message(paste("Over", recompute_dist_removal_threshold, "genes_have been removed since last distance matrix update, triggering new distance matrix computation of", sum(min_thresh_mat_keep_logical), "genes" ))
+        min_thresh_mat_keep_logical[colnames(min_thresh_mat) %in% colnames(pval_and_dif_by_gene_count_mat[,logical_failing_genes])] <- FALSE
+        dist_mat <- distance_function(min_thresh_mat[,min_thresh_mat_keep_logical])
+        restart = TRUE
+        break
+      }
+      pvals_and_dif_mats_list[[i]] <- pval_and_dif_by_gene_count_mat
     }
-    return(pval_and_dif_by_gene_count_mat)
-  })
-  message(paste("Final filtered_count matrix has", ncol(min_thresh_mat), 'after removal of', ncol(count_matrix) - ncol(min_thresh_mat), ' genes'))
-  return(list(min_thresh_mat, dist_mat, do.call(cbind, pvals_and_dif_mats_list)))
+    if(restart)  {
+      next
+    }
+    else{
+      message(paste("Final filtered_count matrix has", ncol(min_thresh_mat), 'after removal of', ncol(count_matrix) - ncol(min_thresh_mat), ' genes'))
+    }
+    return(list(min_thresh_mat, dist_mat, do.call(cbind, pvals_and_dif_mats_list)))
+  }
 }
 
 #` Calculate mean value from matrix

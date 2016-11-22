@@ -5,10 +5,10 @@
 \title{Filter random genes from matrix}
 \usage{
 get_random_genes_from_matrix(count_matrix = matrix(),
-  recompute_dist_removal_threshold = 2000, min_cell_count_threshold = 4,
+  recompute_dist_removal_threshold = 500, min_cell_count_threshold = 4,
   distance_matrix = NULL, distance_function = dist,
-  normalize_matrix = TRUE, heuristic_threshold = 200,
-  heuristic_step_size = 20, n_sample_draws = 1000, tail_area = 0.2)
+  normalize_matrix = FALSE, heuristic_threshold = 200,
+  heuristic_step_size = 1000, n_sample_draws = 1000, tail_area = 0.001)
 }
 \description{
 Remove genes from raw count matrix that are unlikely contributing to the biology based on their expression patterns
