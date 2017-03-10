@@ -68,3 +68,42 @@ subsample_cell_ranger_data_gadget <- function(cell_by_gene_count_mat = matrix())
 }
 
 
+#' View expression of genes on 2D plots.
+#'
+#' @param ggplot_df a data.frame that must contain the following column names and associated types: sample_name, character; D1, numeric; D2, numeric
+#' @param expr_mat a matrix with rownames corresponding to sample_name and with column names corresponding to ENSEMBL IDs. The matrix must be numeric
+#' @param gene_selector_df a data.frame with an ENSEMBL column corresponding to the colnames of expr_mat and containing other informative columns such as GENENAME, GENE_TYPE, etc...
+#' @return Returns null.
+#' @export
+explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
+
+  ui <- fluidPage(
+    #gadgetTitleBar("Expression Display"),
+    mainPanel(
+      dataTableOutput('gene_selector'),
+      plotOutput('vis')
+    )
+  )
+
+  server <- function(input, output, session) {
+    # Define reactive expressions, outputs, etc.
+
+    output$gene_selector <- renderDataTable(gene_selector_df, selection = 'single')
+    # When the Done button is clicked, return a value
+    output$vis <- renderPlot({
+      print(input$gene_selector)
+      if(length(input$gene_selector_rows_selected) == 0)  {
+        ggplot(ggplot_df, aes(x=D1, y=D2, shape = sample_replicate, color = sample_date)) + geom_point()
+      }
+      else  {
+        final_df <- dplyr::left_join(ggplot_df,rnaseqUtils::get_df_from_named_char_vector(expr_mat[,gene_selector_df$ENSEMBL[input$gene_selector_rows_selected]], c('sample_name', 'expr')))
+        print(head(final_df))
+        ggplot(final_df, aes(x=D1, y=D2, color = expr)) + geom_point() + scale_color_gradient2(low='white', high = 'darkred')
+      }
+    })
+
+
+  }
+
+  runGadget(ui, server)
+}
