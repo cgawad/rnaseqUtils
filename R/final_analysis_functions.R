@@ -48,10 +48,10 @@ get_prop_expressed_df <- function(sample_to_cluster_df = data.frame(), expressio
     return(data.frame(cluster_id = cluster_ids[.cluster_ind], ENSEMBL = colnames(exp_genes_per_cluster_mat), prop = .cluster, stringsAsFactors = FALSE))
   })
   if(species == 'mmusculus')  {
-    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Mmusculus.v79, keys=unique(props_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
+    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79, keys=unique(props_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
   }
   else if(species == 'hsapiens')  {
-    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Hsapiens.v79, keys=unique(props_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
+    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Hsapiens.v79::EnsDb.Hsapiens.v79, keys=unique(props_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
   }
   else  {
     print("species must be 'mmusculus' or 'hsapiens'")
@@ -104,10 +104,10 @@ get_enriched_genes_in_each_cluster <- function(sample_to_cluster_df = data.frame
   #colnames(top_n_genes_per_cluster_mat) <- paste("c", as.character(cluster_ids), sep = "")
   #top_n_genes_per_cluster_melted_df <- reshape2::melt(top_n_genes_per_cluster_mat)
   if(species == 'mmusculus')  {
-    ensembl_to_gene_name_df <- select(EnsDb.Mmusculus.v79, keys=unique(top_n_genes_per_cluster_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
+    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79, keys=unique(top_n_genes_per_cluster_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
   }
   else if(species == 'hsapiens')  {
-    ensembl_to_gene_name_df <- select(EnsDb.Hsapiens.v79, keys=unique(top_n_genes_per_cluster_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
+    ensembl_to_gene_name_df <- AnnotationDbi::select(EnsDb.Hsapiens.v79::EnsDb.Hsapiens.v79, keys=unique(top_n_genes_per_cluster_df$ENSEMBL), keytype = 'GENEID', columns = c("GENENAME", "GENEID")) %>% dplyr::rename(ENSEMBL =GENEID)
   }
   else  {
     print("species must be 'mmusculus' or 'hsapiens'")
@@ -120,7 +120,7 @@ get_enriched_genes_in_each_cluster <- function(sample_to_cluster_df = data.frame
 get_clustered_scatterplot <- function(tsne_coordinates_mat, sample_name_to_cluster_id_df)  {
   temp_coord_df <- data.frame(tsne_coordinates_mat) %>% dplyr::rename(D1 = X1, D2 = X2) %>% dplyr::mutate(sample_name = sample_name_to_cluster_id_df$sample_name, sample_replicate = 'A', sample_date = sub("[A-Z]_.+", "", sample_name)) %>% dplyr::full_join(., sample_name_to_cluster_id_df)
 
-  temp_coord_annos_for_fig_df <-  group_by(temp_coord_df, cluster_id) %>% dplyr::summarize(cluster_label_x = mean(D1, na.rm = TRUE), cluster_label_y = mean(D2, na.rm = TRUE))
+  temp_coord_annos_for_fig_df <-  dplyr::group_by(temp_coord_df, cluster_id) %>% dplyr::summarize(cluster_label_x = mean(D1, na.rm = TRUE), cluster_label_y = mean(D2, na.rm = TRUE))
 
   ggplot(temp_coord_df, aes(x = D1, y = D2, color = factor(cluster_id))) + geom_point() + geom_label(data = temp_coord_annos_for_fig_df, aes(x = cluster_label_x, y = cluster_label_y, label = as.character(cluster_id)))
 }
@@ -171,10 +171,10 @@ get_mean_exp_by_cluster_with_genename_df <-function(enriched_mat, sample_name_to
   enriched_mat_melted_df <- reshape2::melt(enriched_mat_df, id.vars = 'sample_name', variable.name = 'GENEID', value.name = 'norm_expr') %>% dplyr::mutate(GENEID = as.character(GENEID)) %>% dplyr::left_join(., {sample_name_to_cluster_id_df %>% dplyr::select(sample_name, cluster_id)})# %>% dplyr::left_join(., enriched_mat_df)
   print(head(enriched_mat_melted_df))
   if(species == 'mmusculus')  {
-    gene_id_df <- select(EnsDb.Mmusculus.v79, keytype = 'GENEID', keys = enriched_mat_melted_df$GENEID, columns = c('GENEID', 'GENENAME'))# %>% dplyr::rename(ENSEMBL = GENEID)
+    gene_id_df <- AnnotationDbi::select(EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79, keytype = 'GENEID', keys = enriched_mat_melted_df$GENEID, columns = c('GENEID', 'GENENAME'))# %>% dplyr::rename(ENSEMBL = GENEID)
   }
   else if(species == 'hsapiens')  {
-    gene_id_df <- select(EnsDb.Hsapiens.v79, keytype = 'GENEID', keys = enriched_mat_melted_df$GENEID, columns = c('GENEID', 'GENENAME'))# %>% dplyr::rename(ENSEMBL = GENEID)
+    gene_id_df <- AnnotationDbi::select(EnsDb.Hsapiens.v79::EnsDb.Hsapiens.v79, keytype = 'GENEID', keys = enriched_mat_melted_df$GENEID, columns = c('GENEID', 'GENENAME'))# %>% dplyr::rename(ENSEMBL = GENEID)
   }
   else  {
     print("species must be 'mmusculus' or 'hsapiens'")

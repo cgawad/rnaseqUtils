@@ -15,4 +15,5 @@ Imports:
   biomaRt,
   shiny,
   EnsDb.Hsapiens.v79,
-  EnsDb.Mmusculus.v79
+  EnsDb.Mmusculus.v79,
+  monocle

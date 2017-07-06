@@ -104,6 +104,83 @@ explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
 
 
   }
+  runGadget(ui, server)
+}
+
+
+run_interactive_monocle_gadget <- function(expression_mat = matrix(), max_cell_counts = 1000, metadata_df = data.frame(), species = c('mmusculus', 'hsapiens'), normalizing_scale_factor = NULL, cell_umi_counts = NULL)  {
+  if(is.null(normalizing_scale_factor))  {
+    stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the normalizing_scale_factor")
+  }
+  if(is.null(cell_umi_counts))  {
+    stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the original UMI counts")
+  }
+  if(length(unique(expression_mat %% 1)) > 1)  {
+    stop("expression_mat should be normalized on input! It is un-normalized during execution of this gadget")
+  }
+
+  expression_mat <- ((2^(expression_mat) -1)/normalizing_scale_factor) * cell_umi_counts
+
+  if(species == 'mmusculus')  {
+    f_data_df <- AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(granule_samples_tf_final_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Mmusculus.v79, keys = colnames(granule_samples_tf_final_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
+  }
+  else if(species == 'hsapiens') {
+    f_data_df <- AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(granule_samples_tf_final_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Hsapiens.v79, keys = colnames(granule_samples_tf_final_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
+  }
+  else  {
+    stop(paste(species, 'has not been handled yet'))
+  }
+
+  p_data_df <- AnnotatedDataFrame(
+    {data.frame(sample_name = rownames(expression_mat), stringsAsFactors = FALSE) %>% dplyr::left_join(., metadata_df) %>% tibble::column_to_rownames('sample_name') %>% dplyr::select(-sample_name)}
+    )
+
+  cds <- newCellDataSet(as(t(expression_mat), 'sparseMatrix'), phenoData = p_data_df, featureData = f_data_df, expressionFamily = negbinomial.size())
+
+  cds <- estimateSizeFactors(cds)
+  cds <- estimateDispersions(cds)
+
+  if(nrow(expression_mat) > max_cell_counts)  {
+    cds <- reduceDimension(cds[,sample(1:ncol(cds_granule), max_cell_counts, replace = FALSE)], max_components=2)
+  }
+  else  {
+    cds <- reduceDimension(cds, max_components=2)
+  }
+
+
+
+  cols_to_select_names <- c('pseudotime', 'state', colnames(metadata_df))
+  cols_to_select = 1:length(cols_to_select_names)
+  names(cols_to_select) <- cols_to_select_names
+
+  ui <- fluidPage(
+    #gadgetTitleBar("Expression Display"),
+    titlePanel(),
+    sidebarLayout(
+      sidebarPanel(
+        selectInput('color_by',
+                    label = 'color_by',
+                    choices = cols_to_select
+                    ),
+        selectInput('root_state',
+                    label = 'root state',
+                    choices = ),
+        selectInput('root_state',
+                    label = 'root state',
+                    choices = )
+      ),
+      mainPanel(
+        plotOutput('monocle_plot'),
+        plotOutput('monocle_heatmap')
+      )
+    )
+  )
+
+  server <- function(input, output, session) {
+    output$monocle_plot <- plot_cell_trajectory(cds, color_by=cols_to_select[[input$color_by]])
+    output$monocle_heatmap <- plot_genes_branched_heatmap(cds, branch_point = input$branch_point, use_gene_short_name = TRUE, show_rownames = TRUE)
+
+  }
 
   runGadget(ui, server)
 }
