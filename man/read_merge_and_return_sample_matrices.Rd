@@ -13,4 +13,3 @@ read_merge_and_return_sample_matrices returns a count matrices corresponding to 
 \description{
 Loads and merges the matrix files from a 10X run
 }
-

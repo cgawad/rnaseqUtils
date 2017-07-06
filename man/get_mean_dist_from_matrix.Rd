@@ -12,4 +12,3 @@ get_mean_dist_from_matrix returns the upper-triangular mean of temp_mat, exludin
 \description{
 The function calculates and returns the mean of the upper-triangular portion of a matrix
 }
-

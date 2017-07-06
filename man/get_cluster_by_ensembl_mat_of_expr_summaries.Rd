@@ -13,4 +13,3 @@ get_cluster_by_ensembl_mat_of_expr_summaries retuens a cluster by ensembl matrix
 \description{
 calculate summary for each cluster defined in sample_to_cluster_df and output summary results.
 }
-

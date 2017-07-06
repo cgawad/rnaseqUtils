@@ -17,4 +17,3 @@ Remove genes from raw count matrix that are unlikely contributing to the biology
 This function performs the following filtering tasks. It initially removes all columns (genes) that have less than two non-zero entries, ie. that are expressed in zero or one cell.
 This c
 }
-

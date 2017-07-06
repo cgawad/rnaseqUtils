@@ -15,4 +15,3 @@ create_mst_igraphs_for_samples retuens a list of lists. The outer list correspon
 \description{
 Computes the minimum spanning trees from a names list of expression matrices.
 }
-

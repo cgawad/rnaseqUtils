@@ -12,4 +12,3 @@ get_cidr_distance_matrix_from_raw_counts returns a named distance matrix showing
 \description{
 Use cidr to compute inter-sample distances and return named distance matrix
 }
-

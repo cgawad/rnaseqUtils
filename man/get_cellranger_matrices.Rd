@@ -13,4 +13,3 @@ get_cellranger_matrices returns a list of count matrices corresponding to the ma
 \description{
 Loads the matrix files from a 10X run
 }
-

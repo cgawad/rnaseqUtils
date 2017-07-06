@@ -14,4 +14,3 @@ remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix returns a reduced 
 \description{
 Removes all mitochondrial and ribosomal protein genes in the count matrix and returns the reduces matrix.
 }
-

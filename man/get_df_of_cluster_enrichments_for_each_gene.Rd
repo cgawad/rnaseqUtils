@@ -26,4 +26,3 @@ Alternatively, a value of one can occur if a gene is gradually increased (or dec
 The above value is then divided by the variance of the measurements in the graph.
 This increases the enrichment score for genes that are enriched in large subgraphs relative to terminal nodes.
 }
-
