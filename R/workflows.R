@@ -45,3 +45,62 @@ examine_dataset <- function(cell_data_dataframe = data.frame(), normalized_expre
 
   return(results_list)
 }
+
+#' Read cellranger output directory, filter the data, and return normalized
+#' expression matrix
+#'
+#' run_to_path_df: A dataframe with two columns (1) run_name (character): The name
+#' of the cellranger run, such as patient_id, sample_date, etc...
+#' (2) cellranger_path (character): The path to the toplevel cellranger output
+#'
+#' .genome: a character, typically 'mm10', or 'hg19'
+#'
+#' umi_limits: vector of length 2, with lower and upper bouds for umi_counts
+#'get_n
+#' This function reads a series of cellranger output directories. It merges the
+#' results together into a large matrix anbd then filters out cells with UMI
+#' counts outside of the range specified in umi_limits. Mitochondrial and
+#' ribosomal protein-coding genes are then removed from the matrix, as are
+#' NSEMBL IDs with no expression across the remaining cells. Finally, the data
+#' scaled using a global scaling factor (total UMIs per cell) and
+#' log2-transformed.
+#'
+#' @export
+get_normalized_expression_matrix  <- function(run_to_path_df = data.frame(), .genome = c('mm10', 'hg19'), umi_limits = c(3e3,Inf))  {
+  output_list = list()
+  mat_list <- lapply(1:nrow(run_to_path_df), function(.ind)  {
+    #sample_name <- sub("PAN_", "", sub('_[^_]+', '', basename(.filename)))
+    sample_obj <- cellrangerRkit::load_cellranger_matrix(run_to_path_df$cellranger_path[.ind], genome = .genome)
+    sample_mat <- as.matrix(exprs(sample_obj))
+    print(class(sample_mat))
+    colnames(sample_mat) <- paste(run_to_path_df$run_name[.ind], colnames(sample_mat), sep = "_")
+    return(sample_mat)
+  })
+  print(sapply(mat_list, class))
+  giant_mat <- t(do.call(cbind, mat_list))
+  rm(mat_list)
+  print(class(giant_mat))
+
+  #Remove ribosomal and mt proteins
+  if(.genome == 'mm10')  {
+    giant_norpmt_mat <- remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix(cell_by_ensembl_mat = giant_mat, species = 'mmusculus')
+  }
+  else if(.genome == 'hg19')  {
+    giant_norpmt_mat <- remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix(cell_by_ensembl_mat = giant_mat, species = 'hsapiens')
+  }
+  else  {
+    stop(paste(.genome, 'not handled yet.'))
+  }
+
+  #Remove cells outside the umi count limits defined by umi_limits
+  umi_counts <- rowSums(giant_norpmt_mat)
+  filtered_mat <- giant_norpmt_mat[(umi_counts <= umi_limits[2]) & (umi_counts >= umi_limits[1]),]
+  rm(umi_counts)
+
+  #Remove non-expressed genes
+  filtered_mat <- filtered_mat[,colSums(filtered_mat) > 0]
+  filtered_mat <- log2((filtered_mat / rowSums(filtered_mat)) * median(rowSums(filtered_mat)) + 1)
+
+  return(filtered_mat)
+
+}
