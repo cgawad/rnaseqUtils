@@ -141,7 +141,6 @@ explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
 #' @export
 run_interactive_monocle_gadget <- function(expression_mat = matrix(), max_cell_counts = 1000, metadata_df = data.frame(), species = c('mmusculus', 'hsapiens'), normalizing_scale_factor = NULL, cell_umi_counts = NULL)  {
   library(shiny)
-  library(monocle)
   if(is.null(normalizing_scale_factor))  {
     stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the normalizing_scale_factor")
   }

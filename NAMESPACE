@@ -30,3 +30,5 @@ export(subsample_cell_ranger_data_gadget)
 
 importFrom(magrittr, "%>%")
 importFrom(Biobase, "exprs")
+import(ggplot2)
+import(monocle)
