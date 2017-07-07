@@ -95,12 +95,12 @@ explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
     output$vis <- renderPlot({
       print(input$gene_selector)
       if(length(input$gene_selector_rows_selected) == 0)  {
-        ggplot(ggplot_df, aes(x=D1, y=D2, shape = sample_replicate, color = sample_date)) + geom_point()
+        ggplot2::ggplot(ggplot_df, aes(x=D1, y=D2, shape = sample_replicate, color = sample_date)) + geom_point()
       }
       else  {
         final_df <- dplyr::left_join(ggplot_df,rnaseqUtils::get_df_from_named_char_vector(expr_mat[,gene_selector_df$ENSEMBL[input$gene_selector_rows_selected]], c('sample_name', 'expr')))
         print(head(final_df))
-        ggplot(final_df, aes(x=D1, y=D2, color = expr)) + geom_point() + scale_color_gradient2(low='white', high = 'darkred')
+        ggplot2::ggplot(final_df, aes(x=D1, y=D2, color = expr)) + geom_point() + scale_color_gradient2(low='white', high = 'darkred')
       }
     })
 

@@ -3,7 +3,7 @@ plot_ordered_heatmap <- function(hm_df = data.frame())  {
   temp_mat <- reshape2::acast(hm_df, cluster_id ~ GENENAME, value.var = 'prop')
   col_order <- colnames(temp_mat)[hclust(dist(t(temp_mat)))$order]
   row_order <- rownames(temp_mat)[hclust(dist(temp_mat))$order]
-  ggplot({dplyr::mutate(hm_df, cluster_id = factor(cluster_id, levels = row_order, ordered = TRUE), GENENAME = factor(GENENAME, levels = col_order, ordered = TRUE))}, aes(x = GENENAME, y = cluster_id, fill = prop)) + geom_tile() + scale_fill_gradient2(low = 'white', mid = 'deepskyblue', high = 'darkorange', midpoint = 0.5) + theme(axis.text.x = element_text(angle = -90))
+  ggplot2::ggplot({dplyr::mutate(hm_df, cluster_id = factor(cluster_id, levels = row_order, ordered = TRUE), GENENAME = factor(GENENAME, levels = col_order, ordered = TRUE))}, aes(x = GENENAME, y = cluster_id, fill = prop)) + geom_tile() + scale_fill_gradient2(low = 'white', mid = 'deepskyblue', high = 'darkorange', midpoint = 0.5) + theme(axis.text.x = element_text(angle = -90))
 }
 
 #' @export
@@ -122,7 +122,7 @@ get_clustered_scatterplot <- function(tsne_coordinates_mat, sample_name_to_clust
 
   temp_coord_annos_for_fig_df <-  dplyr::group_by(temp_coord_df, cluster_id) %>% dplyr::summarize(cluster_label_x = mean(D1, na.rm = TRUE), cluster_label_y = mean(D2, na.rm = TRUE))
 
-  ggplot(temp_coord_df, aes(x = D1, y = D2, color = factor(cluster_id))) + geom_point() + geom_label(data = temp_coord_annos_for_fig_df, aes(x = cluster_label_x, y = cluster_label_y, label = as.character(cluster_id)))
+  ggplot2::ggplot(temp_coord_df, aes(x = D1, y = D2, color = factor(cluster_id))) + geom_point() + geom_label(data = temp_coord_annos_for_fig_df, aes(x = cluster_label_x, y = cluster_label_y, label = as.character(cluster_id)))
 }
 
 #' @export
@@ -154,7 +154,7 @@ get_dispersion <- function(log_normed_mat, nbins = 20, top= 1000)  {
 get_ggplot_heatmap <- function(col_order_char, row_order_char, hm_df = data.frame())  {
   temp_ggplot_df <- dplyr::group_by(hm_df, GENENAME) %>% dplyr::mutate(scaled_mean_norm_expr = (mean_norm_expr - mean(mean_norm_expr))/sd(mean_norm_expr)) %>% ungroup() %>% dplyr::mutate(GENENAME = factor(GENENAME, levels = col_order_char, ordered = TRUE), cluster_id = factor(cluster_id, levels =row_order_char, ordered = TRUE))
   print(head(temp_ggplot_df))
-  ggplot(temp_ggplot_df, aes(x = GENENAME, y = cluster_id, fill = scaled_mean_norm_expr)) + geom_tile(color = 'white') + scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red') + theme(axis.text.x = element_text(angle = -90))
+  ggplot2::ggplot(temp_ggplot_df, aes(x = GENENAME, y = cluster_id, fill = scaled_mean_norm_expr)) + geom_tile(color = 'white') + scale_fill_gradient2(low = 'blue', mid = 'white', high = 'red') + theme(axis.text.x = element_text(angle = -90))
 }
 
 #' @export

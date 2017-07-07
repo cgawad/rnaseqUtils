@@ -61,7 +61,7 @@ examine_dataset <- function(cell_data_dataframe = data.frame(), normalized_expre
 
   temp_visualization_list <- lapply(top_1000_dispersed_rtsne_list, function(tsne_result)  {
     overview_df <- data.frame(tsne_result$Y, sample_name = rownames(normalized_expression_matrix), stringsAsFactors = FALSE) %>% dplyr::rename(D1 = X1, D2 = X2) %>% dplyr::left_join(., cell_data_dataframe)
-    ggplot(overview_df, aes_string(x = 'D1', y = 'D2', color = color_var)) + geom_point()
+    ggplot2::ggplot(overview_df, aes_string(x = 'D1', y = 'D2', color = color_var)) + geom_point()
   })
   results_list[['overview_plots']] <- temp_visualization_list
 
