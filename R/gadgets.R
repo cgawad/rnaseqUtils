@@ -1,3 +1,5 @@
+
+
 #' @export
 launch_rnaseq_data_explorer_gadget <- function(dataset_level_df = data.frame(), cluster_level_df = data.frame(), ENSEMBL_to_color_var_list = list()) {
 
@@ -76,7 +78,7 @@ subsample_cell_ranger_data_gadget <- function(cell_by_gene_count_mat = matrix())
 #' @return Returns null.
 #' @export
 explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
-
+  library(shiny)
   ui <- fluidPage(
     #gadgetTitleBar("Expression Display"),
     mainPanel(
@@ -107,67 +109,106 @@ explore_expression <- function(ggplot_df, expr_mat, gene_selector_df) {
   runGadget(ui, server)
 }
 
-
+#' Explore a dataset with monocle
+#'
+#' This gadget uses monocle to plot a DDRTree and visualization of a branched
+#' heatmap. The branch point and root of the tree can be changed interactively.
+#'
+#' @param expression_mat: This is a CellxGene matrix that will be used to run
+#'   monocle.
+#' @param max_cell_counts: Moncole can choke on large datasets, so this puts a
+#'   cap on then number of cells from expression_mat that will be used to
+#'   generate a 2D structure.
+#' @param metadata_df: This is a data.frame that contains metatadata for the
+#'   cells in expression_mats. It is used for coloring the monocle plots by
+#'   additinal variables. It must at the very least have a sample_name column
+#'   that matches the rownames of expression_mat.
+#' @param species: this should be pretty obvious. Currently, 'mmusculus' and
+#'   'hsapiens' are valid
+#' @param normalizing_scale_factor: This is to un-normalize the data. This has
+#'   to be done because of the different normalization procedure that monocle
+#'   uses. This factor is just the median umi count that was used in the
+#'   normalization of expression_mat. It can be found as an element of the list
+#'   returned from get_normalized_expression_matrix.
+#' @param cell_umi_counts: This is a named character vector of cell UMI counts,
+#'   again required for un-normalizing the data in expression_mat. It can also
+#'   be found as an element of the list returned from
+#'   get_normalized_expression_matrix.
+#'
+#' @return This function launches an app that allows interactive exploration of
+#'   a dataset. There is no object returned.
+#'
+#' @export
 run_interactive_monocle_gadget <- function(expression_mat = matrix(), max_cell_counts = 1000, metadata_df = data.frame(), species = c('mmusculus', 'hsapiens'), normalizing_scale_factor = NULL, cell_umi_counts = NULL)  {
+  library(shiny)
+  library(monocle)
   if(is.null(normalizing_scale_factor))  {
     stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the normalizing_scale_factor")
   }
   if(is.null(cell_umi_counts))  {
     stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the original UMI counts")
   }
-  if(length(unique(expression_mat %% 1)) > 1)  {
+  if(length(unique(as.vector(foobar$top_1000_mat %% 1))) == 1)  {
     stop("expression_mat should be normalized on input! It is un-normalized during execution of this gadget")
   }
+  if(is.null(names(cell_umi_counts)))  {
+    stop("I pity the foo who doesn't use a named character vector for cell_umi_counts!")
+  }
 
-  expression_mat <- ((2^(expression_mat) -1)/normalizing_scale_factor) * cell_umi_counts
+  expression_mat <- ((2^(expression_mat) -1)/normalizing_scale_factor) * cell_umi_counts[rownames(expression_mat)]
 
   if(species == 'mmusculus')  {
-    f_data_df <- AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(granule_samples_tf_final_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Mmusculus.v79, keys = colnames(granule_samples_tf_final_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
+    f_data_df <- Biobase::AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(expression_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Mmusculus.v79::EnsDb.Mmusculus.v79, keys = colnames(expression_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
   }
   else if(species == 'hsapiens') {
-    f_data_df <- AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(granule_samples_tf_final_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Hsapiens.v79, keys = colnames(granule_samples_tf_final_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
+    f_data_df <- Biobase::AnnotatedDataFrame({dplyr::left_join(data.frame(GENEID = colnames(expression_mat), stringsAsFactors = FALSE), AnnotationDbi::select(EnsDb.Hsapiens.v79::EnsDb.Hsapiens.v79, keys = colnames(expression_mat), keytype = 'GENEID', columns = c('GENEID', 'GENENAME'))) %>% dplyr::mutate(GENENAME = ifelse(is.na(GENENAME), GENEID, GENENAME)) %>% dplyr::rename(ENSEMBL = GENEID, gene_short_name = GENENAME) %>% tibble::column_to_rownames('ENSEMBL')})
   }
   else  {
     stop(paste(species, 'has not been handled yet'))
   }
 
-  p_data_df <- AnnotatedDataFrame(
-    {data.frame(sample_name = rownames(expression_mat), stringsAsFactors = FALSE) %>% dplyr::left_join(., metadata_df) %>% tibble::column_to_rownames('sample_name') %>% dplyr::select(-sample_name)}
+  p_data_df <- Biobase::AnnotatedDataFrame(
+    {data.frame(sample_name = rownames(expression_mat), stringsAsFactors = FALSE) %>% dplyr::left_join(., metadata_df) %>% tibble::column_to_rownames('sample_name')}# %>% dplyr::select(-sample_name)}
     )
 
-  cds <- newCellDataSet(as(t(expression_mat), 'sparseMatrix'), phenoData = p_data_df, featureData = f_data_df, expressionFamily = negbinomial.size())
+  temp_cds <- monocle::newCellDataSet(as(t(expression_mat), 'sparseMatrix'), phenoData = p_data_df, featureData = f_data_df, expressionFamily = VGAM::negbinomial.size())
 
-  cds <- estimateSizeFactors(cds)
-  cds <- estimateDispersions(cds)
+  temp_cds <- BiocGenerics::estimateSizeFactors(temp_cds)
+  temp_cds <- BiocGenerics::estimateDispersions(temp_cds)
 
   if(nrow(expression_mat) > max_cell_counts)  {
-    cds <- reduceDimension(cds[,sample(1:ncol(cds_granule), max_cell_counts, replace = FALSE)], max_components=2)
+    temp_cds <- monocle::reduceDimension(temp_cds[,sample(1:ncol(temp_cds), max_cell_counts, replace = FALSE)], max_components=2)
   }
   else  {
-    cds <- reduceDimension(cds, max_components=2)
+    temp_cds <- monocle::reduceDimension(temp_cds, max_components=2)
   }
+  temp_cds <- monocle::orderCells(temp_cds)
 
 
-
-  cols_to_select_names <- c('pseudotime', 'state', colnames(metadata_df))
-  cols_to_select = 1:length(cols_to_select_names)
-  names(cols_to_select) <- cols_to_select_names
+  cols_to_select_list <- as.list(c('Pseudotime', 'State', colnames(metadata_df)))
+  #cols_to_select = 1:length(cols_to_select_names)
+  #names(cols_to_select) <- cols_to_select_names
 
   ui <- fluidPage(
     #gadgetTitleBar("Expression Display"),
-    titlePanel(),
+    titlePanel(title = 'Monocle Explorer'),
     sidebarLayout(
       sidebarPanel(
         selectInput('color_by',
                     label = 'color_by',
-                    choices = cols_to_select
-                    ),
+                    choices = cols_to_select_list,
+                    selected = 'Pseudotime'),
         selectInput('root_state',
                     label = 'root state',
-                    choices = ),
-        selectInput('root_state',
-                    label = 'root state',
-                    choices = )
+                    choices = as.list(unique(pData(temp_cds)$State)),
+                    selected = 1),
+        numericInput('branch_point',
+                    label = 'branch_point',
+                    value = 1),
+        selectInput("n_heatmap_entries",
+                    label = "# heatmap entries",
+                    choices = as.list(c(25,50,75,100,125,150,175,200)),
+                    selected = 25)
       ),
       mainPanel(
         plotOutput('monocle_plot'),
@@ -177,8 +218,21 @@ run_interactive_monocle_gadget <- function(expression_mat = matrix(), max_cell_c
   )
 
   server <- function(input, output, session) {
-    output$monocle_plot <- plot_cell_trajectory(cds, color_by=cols_to_select[[input$color_by]])
-    output$monocle_heatmap <- plot_genes_branched_heatmap(cds, branch_point = input$branch_point, use_gene_short_name = TRUE, show_rownames = TRUE)
+    new_root <- reactive({
+      temp_cds <<- monocle::orderCells(temp_cds, root_state = as.integer(input$root_state))
+    })
+
+    output$monocle_plot <- renderPlot({
+      new_root()#temp_cds <- monocle::orderCells(temp_cds, root_state = as.integer(input$root_state))
+      monocle::plot_cell_trajectory(temp_cds, color_by=input$color_by)
+    })
+    output$monocle_heatmap <- renderPlot({
+      new_root()
+      target_genes <- as.character({monocle::BEAM(temp_cds, branch_point = as.integer(input$branch_point), relative_expr = FALSE) %>% dplyr::arrange(qval)}$fd[1:as.integer(input$n_heatmap_entries)])
+      target_ensembls <- rownames(fData(temp_cds))[fData(temp_cds)$gene_short_name %in% target_genes]
+      #print(target_genes)
+      monocle::plot_genes_branched_heatmap(temp_cds[target_ensembls,], branch_point = as.integer(input$branch_point), use_gene_short_name = TRUE, show_rownames = TRUE)
+    })
 
   }
 

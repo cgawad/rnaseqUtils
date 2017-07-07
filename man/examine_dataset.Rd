@@ -23,18 +23,22 @@ used in tsne}
 
 \item{.species:}{currently either 'mmusculus' or 'hsapiens'}
 
-\item{color_var:}{variable name to color cells by in overview ggplot
-images. This must correspond to a column name in cell_data_dataframe.}
+\item{color_var:}{variable name to color cells by in overview ggplot images.
+This must correspond to a column name in cell_data_dataframe.}
 }
 \value{
 This function returns a list with the following elements: \itemize{
-  \item \strong{tsne_results}: a list of Rtsne outputs form the filtered
-  dataset, each from a differnet perplexity (15,30,45,60) \item
+  \item \strong{top_1000_mat}: a matrix of the top 1000 overdispersed genes
+  \item \strong{tsne_results}: a list of Rtsne outputs from the filtered
+  matrix, each from a differnet perplexity (15,30,45,60) \item
   \strong{n50_enriched_genes_by_cluster}: a dataframe showing the top 50
   enriched genes in each cluster. Enrichment is based on proportion of cells
-  expressing a gene \item \strong{clusters_scatterplot}: a scatterplot coloring the cells by cluster_id\item
-  \strong{important_genes_heatmap}: a heatmap plot showing the enriched genes in each cluster \item \strong{overview_plots}: a list of plots corresponding to the tsne runs that are coloredc by @param color_by
-}
+  expressing a gene \item \strong{updated_metadata_df}: the original
+  cell_dataframe annotated with cluster_id \item
+  \strong{clusters_scatterplot}: a scatterplot coloring the cells by
+  cluster_id\item \strong{important_genes_heatmap}: a heatmap plot showing
+  the enriched genes in each cluster \item \strong{overview_plots}: a list of
+  plots corresponding to the tsne runs that are coloredc by @param color_by }
 }
 \description{
 This function examines several facets of the dataset, inclusing filtering

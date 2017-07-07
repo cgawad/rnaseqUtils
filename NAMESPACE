@@ -25,8 +25,8 @@ export(plot_ordered_heatmap)
 export(rarefy_count_matrix)
 export(read_merge_and_return_sample_matrices)
 export(remove_ribosomal_proteins_and_mitochondrial_genes_from_matrix)
+export(run_interactive_monocle_gadget)
 export(subsample_cell_ranger_data_gadget)
 
 importFrom(magrittr, "%>%")
 importFrom(Biobase, "exprs")
-
