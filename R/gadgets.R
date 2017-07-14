@@ -148,7 +148,7 @@ run_interactive_monocle_gadget <- function(expression_mat = matrix(), max_cell_c
   if(is.null(cell_umi_counts))  {
     stop("Cannot 'un-normalize' (not a real word, I know) the matrix to the original count matrix without knowing the original UMI counts")
   }
-  if(length(unique(as.vector(foobar$top_1000_mat %% 1))) == 1)  {
+  if(length(unique(as.vector(expression_mat %% 1))) == 1)  {
     stop("expression_mat should be normalized on input! It is un-normalized during execution of this gadget")
   }
   if(is.null(names(cell_umi_counts)))  {
