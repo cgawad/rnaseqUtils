@@ -1,7 +1,7 @@
 Package: rnaseqUtils
 Type: Package
 Title: Utility Functions for RNASeq Data Analysis
-Version: 0.1.9
+Version: 0.1.10
 Author: Rob Carter
 Maintainer: Rob Carter <robert.carter@stjude.org>
 Description: This package currently contains several functions for faciltating
