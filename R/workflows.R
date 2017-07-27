@@ -1,6 +1,6 @@
 #' Generate several plots and objects for dataset exploration
 #'
-#' This function examines several facets of the dataset, inclusing filtering
+#' This function examines several facets of the dataset, including filtering
 #' cells based on metadata, dimension reduction, cluster analysis, and
 #' visualization
 #'
@@ -38,33 +38,63 @@
 examine_dataset <- function(cell_data_dataframe = data.frame(), normalized_expression_matrix = matrix(), .species = 'mmusculus', color_var = character())  {
   results_list = list()
   normalized_expression_matrix <- normalized_expression_matrix[cell_data_dataframe$sample_name,]
+  message('Removing non-expressed genes from subsetted data.')
+  normalized_expression_matrix <- normalized_expression_matrix[,colSums(normalized_expression_matrix) > 0]
+
   top_1000_dispersed_mat <- get_dispersion(normalized_expression_matrix)
-  results_list[['top_1000_mat']] <- top_1000_dispersed_mat
-  top_1000_dispersed_prcomp <- prcomp(top_1000_dispersed_mat, scale. = TRUE)
-  top_1000_dispersed_rtsne_list <- lapply(c(15,30,45,60), function(.perplexity)  {Rtsne::Rtsne(top_1000_dispersed_prcomp$x[,1:50], perplexity = .perplexity, pca = FALSE)})
-  results_list[['tsne_results']] <- top_1000_dispersed_rtsne_list
-  tree_splits_list <- get_treecuts(top_1000_dispersed_mat)
 
-  sample_name_cluster_id_df <- get_sample_name_to_cluster_id_df(tree_splits_list[[2]][[3]], normalized_expression_matrix)
-  n50_enriched_genes_by_cluster_df <- get_enriched_genes_in_each_cluster(sample_name_cluster_id_df, expression_mat = normalized_expression_matrix, top_n = 50, species = .species)
-  results_list[['n50_enriched_genes_by_cluster']] <- n50_enriched_genes_by_cluster_df
-
-  results_list[['updated_metadata_df']] <- dplyr::left_join(cell_data_dataframe, sample_name_cluster_id_df)
-  clusters_scatterplot <- get_clustered_scatterplot(top_1000_dispersed_rtsne_list[[4]]$Y, sample_name_cluster_id_df)
-  results_list[['clusters_scatterplot']] <- clusters_scatterplot
+  #invalid_cols <- sum(colSums(top_1000_dispersed_mat) == 0)
+  #if(length(invalid_cols) >= 0)  {
+  #  warning("Although 10")
+  #}
+  valid_top_1000_dispersed_mat <- top_1000_dispersed_mat[,colSums(top_1000_dispersed_mat) > 0]
 
 
-  prop_df <- get_prop_expressed_df(sample_to_cluster_df = sample_name_cluster_id_df, expression_mat = as.matrix(normalized_expression_matrix[,unique(n50_enriched_genes_by_cluster_df$ENSEMBL)]), species = .species)
+  results_list[["top_1000_mat"]] <- top_1000_dispersed_mat
+  valid_top_1000_dispersed_prcomp <- prcomp(valid_top_1000_dispersed_mat,
+                                            scale. = TRUE)
+  valid_top_1000_dispersed_rtsne_list <- lapply(c(15, 30, 45, 60),
+                                                function(.perplexity) {
+                                                  Rtsne::Rtsne(valid_top_1000_dispersed_prcomp$x[, 1:50],
+                                                               perplexity = .perplexity, pca = FALSE)
+                                                })
+  results_list[["tsne_results"]] <- valid_top_1000_dispersed_rtsne_list
+  tree_splits_list <- get_treecuts(valid_top_1000_dispersed_mat)
+  sample_name_cluster_id_df <- get_sample_name_to_cluster_id_df(tree_splits_list[[2]][[3]],
+                                                                normalized_expression_matrix)
+  n50_enriched_genes_by_cluster_df <- get_enriched_genes_in_each_cluster(sample_name_cluster_id_df,
+                                                                         expression_mat = normalized_expression_matrix, top_n = 50,
+                                                                         species = .species)
+  results_list[["n50_enriched_genes_by_cluster"]] <- n50_enriched_genes_by_cluster_df
+  results_list[["updated_metadata_df"]] <- dplyr::left_join(cell_data_dataframe,
+                                                            sample_name_cluster_id_df)
+  clusters_scatterplot <- get_clustered_scatterplot(valid_top_1000_dispersed_rtsne_list[[4]]$Y,
+                                                    sample_name_cluster_id_df)
+  results_list[["clusters_scatterplot"]] <- clusters_scatterplot
+  prop_df <- get_prop_expressed_df(sample_to_cluster_df = sample_name_cluster_id_df,
+                                   expression_mat = as.matrix(normalized_expression_matrix[,
+                                                                                           unique(n50_enriched_genes_by_cluster_df$ENSEMBL)]),
+                                   species = .species)
+
+  ensembl_ids_without_genenames <- unique(prop_df$ENSEMBL[is.na(prop_df$GENENAME)])
+  if(length(ensembl_ids_without_genenames) > 0)  {
+    warning("Several gene IDs were identified without matching Gene names. These are: ", paste(ensembl_ids_without_genenames, collapse=" "), ". Removing them from consideration...")
+    prop_df <- dplyr::filter(prop_df, ! ENSEMBL %in% ensembl_ids_without_genenames)
+  }
+
+
 
   important_genes_heatmap_ggplot <- plot_ordered_heatmap(prop_df)
-  results_list[['important_genes_heatmap']] <- important_genes_heatmap_ggplot
-
-  temp_visualization_list <- lapply(top_1000_dispersed_rtsne_list, function(tsne_result)  {
-    overview_df <- data.frame(tsne_result$Y, sample_name = rownames(normalized_expression_matrix), stringsAsFactors = FALSE) %>% dplyr::rename(D1 = X1, D2 = X2) %>% dplyr::left_join(., cell_data_dataframe)
-    ggplot2::ggplot(overview_df, aes_string(x = 'D1', y = 'D2', color = color_var)) + geom_point()
-  })
-  results_list[['overview_plots']] <- temp_visualization_list
-
+  results_list[["important_genes_heatmap"]] <- important_genes_heatmap_ggplot
+  temp_visualization_list <- lapply(valid_top_1000_dispersed_rtsne_list,
+                                    function(tsne_result) {
+                                      overview_df <- data.frame(tsne_result$Y, sample_name = rownames(normalized_expression_matrix),
+                                                                stringsAsFactors = FALSE) %>% dplyr::rename(D1 = X1,
+                                                                                                            D2 = X2) %>% dplyr::left_join(., cell_data_dataframe)
+                                      ggplot2::ggplot(overview_df, aes_string(x = "D1",
+                                                                              y = "D2", color = color_var)) + geom_point()
+                                    })
+  results_list[["overview_plots"]] <- temp_visualization_list
   return(results_list)
 }
 
