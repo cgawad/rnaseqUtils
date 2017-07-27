@@ -102,6 +102,7 @@ get_normalized_expression_matrix  <- function(run_to_path_df = data.frame(), .ge
   })
   print(sapply(mat_list, class))
   giant_mat <- t(do.call(cbind, mat_list))
+  giant_mat <- giant_mat[,apply(giant_mat,2,function(.col)  {sum(.col > 0) >= 1})]
   rm(mat_list)
   print(class(giant_mat))
 
